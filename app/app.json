@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "ARIA",
+    "slug": "aria",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "backgroundColor": "#090910",
+    "scheme": "aria",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.aria.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#090910"
+      },
+      "package": "com.aria.app"
+    }
+  }
+}
