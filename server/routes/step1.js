@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/db.js';
 import { uploadImage, submitImageJob, getJobStatus } from '../services/falai.js';
 import { updateProject } from './projects.js';
-import { OUTPAINTING_16x9_PROMPT } from '../../prompts.js';
+import { OUTPAINTING_16x9_PROMPT } from '../prompts.js';
 
 const router = Router();
 

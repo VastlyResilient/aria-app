@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { STYLE_IDENTITY_SYSTEM_PROMPT, RENOVATION_ANIMATION_SYSTEM_PROMPT } from '../../prompts.js';
+import { STYLE_IDENTITY_SYSTEM_PROMPT, RENOVATION_ANIMATION_SYSTEM_PROMPT } from '../prompts.js';
 import dotenv from 'dotenv';
 dotenv.config();
 

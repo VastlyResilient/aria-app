@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/db.js';
 import { submitTwoParallelImageJobs, getJobStatus } from '../services/falai.js';
-import { getRoomImagePrompt } from '../../prompts.js';
+import { getRoomImagePrompt } from '../prompts.js';
 
 const router = Router();
 

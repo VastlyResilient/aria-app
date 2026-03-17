@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/db.js';
 import { submitTwoParallelVideoJobs, getVideoJobStatus } from '../services/falai.js';
 import { generateAnimationPrompt } from '../services/claude.js';
-import { getRoomPromptKey, DOLLY_PROMPTS } from '../../prompts.js';
+import { getRoomPromptKey, DOLLY_PROMPTS } from '../prompts.js';
 
 const router = Router();
 
