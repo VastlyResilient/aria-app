@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db/db.js';
-import { uploadImage, submitImageJob, getJobStatus } from '../services/falai.js';
+import { uploadImage, submitOutpaintingJob, getJobStatus } from '../services/falai.js';
 import { updateProject } from './projects.js';
 import { OUTPAINTING_16x9_PROMPT } from '../prompts.js';
 
@@ -29,8 +29,8 @@ router.post('/convert', async (req, res) => {
     data.photos[roomId] = { ...data.photos[roomId], original: originalUrl };
     await query('UPDATE projects SET data = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(data), projectId]);
 
-    // Submit fal.ai outpainting job
-    const requestId = await submitImageJob(originalUrl, OUTPAINTING_16x9_PROMPT);
+    // Submit fal.ai outpainting job (fast model)
+    const requestId = await submitOutpaintingJob(originalUrl, OUTPAINTING_16x9_PROMPT);
 
     // Store job record
     await query(
@@ -67,8 +67,8 @@ router.get('/status/:requestId', async (req, res) => {
       return res.json({ status: 'completed', result: job.result });
     }
 
-    // Check fal.ai
-    const falStatus = await getJobStatus(requestId);
+    // Check fal.ai (use outpainting model)
+    const falStatus = await getJobStatus(requestId, 'fal-ai/flux/dev');
 
     if (falStatus.status === 'completed' && falStatus.url) {
       // Save result to project

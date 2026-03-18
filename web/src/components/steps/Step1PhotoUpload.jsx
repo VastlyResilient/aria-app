@@ -1,11 +1,26 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { T, btn } from '../../constants/theme';
 import { ROOMS } from '../../constants/rooms';
 import { useProjectStore } from '../../store/projectStore';
 import GuideBanner from '../wizard/GuideBanner';
 import * as api from '../../services/api';
 
+const CONVERT_MESSAGES = [
+  'Analyzing frame composition...',
+  'Extending to cinematic 16:9...',
+  'Calibrating property dimensions...',
+  'Mapping architectural boundaries...',
+  'Rendering exterior canvas...',
+  'Finalizing cinematic crop...',
+];
+
 function PhotoCard({ room, previewUrl, isSelected, isConverting, isConverted, isMaxed, onPress }) {
+  const [msgIndex, setMsgIndex] = useState(0);
+  useEffect(() => {
+    if (!isConverting) return;
+    const iv = setInterval(() => setMsgIndex(i => (i + 1) % CONVERT_MESSAGES.length), 2500);
+    return () => clearInterval(iv);
+  }, [isConverting]);
   return (
     <div
       onClick={() => !isMaxed && !isConverting && onPress()}
@@ -21,9 +36,9 @@ function PhotoCard({ room, previewUrl, isSelected, isConverting, isConverted, is
 
         {/* Converting overlay */}
         {isConverting && (
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(9,9,16,0.75)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <div className="spin" style={{ width: 18, height: 18, border: `2px solid ${T.gold}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
-            <span style={{ fontSize: 8, fontFamily: 'monospace', color: T.gold, letterSpacing: 1 }}>CONVERTING 16:9</span>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(9,9,16,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 8 }}>
+            <div className="spin" style={{ width: 16, height: 16, border: `2px solid ${T.gold}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
+            <span style={{ fontSize: 7, fontFamily: 'monospace', color: T.gold, letterSpacing: 1, textAlign: 'center', lineHeight: 1.4 }}>{CONVERT_MESSAGES[msgIndex]}</span>
           </div>
         )}
 

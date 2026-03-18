@@ -4,7 +4,9 @@ dotenv.config();
 
 fal.config({ credentials: process.env.FAL_KEY });
 
-// Image generation model (outpainting + room transformation)
+// Fast model for 16:9 outpainting (speed over quality)
+const OUTPAINTING_MODEL = 'fal-ai/flux/dev';
+// High quality model for room transformations
 const IMAGE_MODEL = 'fal-ai/flux-pro/v1.1/ultra';
 
 // Video generation models
@@ -27,6 +29,19 @@ export const uploadImage = async (imageDataUrl) => {
 // ── Submit a single image-to-image job ──────────────────────────────────────
 export const submitImageJob = async (imageUrl, prompt) => {
   const { request_id } = await fal.queue.submit(IMAGE_MODEL, {
+    input: {
+      image_url: imageUrl,
+      prompt,
+      num_images: 1,
+      enable_safety_checker: false,
+    },
+  });
+  return request_id;
+};
+
+// ── Submit a fast outpainting job (16:9 conversion) ──────────────────────────
+export const submitOutpaintingJob = async (imageUrl, prompt) => {
+  const { request_id } = await fal.queue.submit(OUTPAINTING_MODEL, {
     input: {
       image_url: imageUrl,
       prompt,
