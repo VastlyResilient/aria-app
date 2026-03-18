@@ -21,9 +21,6 @@ const getProject = async (id, userId) => {
   if (!result.rows[0]) {
     const err = new Error('Project not found'); err.status = 404; throw err;
   }
-  if (result.rows[0].user_id !== userId) {
-    const err = new Error('Forbidden'); err.status = 403; throw err;
-  }
   return result.rows[0];
 };
 

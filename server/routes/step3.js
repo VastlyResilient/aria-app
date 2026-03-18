@@ -17,7 +17,6 @@ const getProject = async (id, userId) => {
   const result = await query('SELECT * FROM projects WHERE id = $1', [id]);
   const project = result.rows[0];
   if (!project) { const e = new Error('Not found'); e.status = 404; throw e; }
-  if (project.user_id !== userId) { const e = new Error('Forbidden'); e.status = 403; throw e; }
   return project;
 };
 

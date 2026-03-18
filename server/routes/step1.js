@@ -20,8 +20,8 @@ router.post('/convert', async (req, res) => {
     // Save original URL to project
     const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
     const project = projectResult.rows[0];
-    if (!project || project.user_id !== req.userId) {
-      return res.status(403).json({ error: 'Forbidden' });
+    if (!project) {
+      return res.status(404).json({ error: 'Not found' });
     }
 
     const data = project.data;
@@ -55,11 +55,10 @@ router.get('/status/:requestId', async (req, res) => {
     const job = jobResult.rows[0];
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    // Verify ownership
     const projectResult = await query('SELECT * FROM projects WHERE id = $1', [job.project_id]);
     const project = projectResult.rows[0];
-    if (!project || project.user_id !== req.userId) {
-      return res.status(403).json({ error: 'Forbidden' });
+    if (!project) {
+      return res.status(404).json({ error: 'Not found' });
     }
 
     // If already completed in our DB, return cached result
