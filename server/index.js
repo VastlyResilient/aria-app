@@ -21,7 +21,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
 app.use(express.json({ limit: '50mb' })); // large limit for base64 image uploads
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
