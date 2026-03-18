@@ -13,7 +13,7 @@ export default function App() {
   }
 
   if (page === 'tutorial' && !tutorialDone) {
-    return <Tutorial onDone={() => { completeTutorial(); setPage('wizard'); }} />;
+    return <Tutorial onComplete={() => { completeTutorial(); setPage('wizard'); }} />;
   }
 
   return <Wizard />;
