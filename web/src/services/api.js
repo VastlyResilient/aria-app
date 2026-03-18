@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://aria-app-production.up.railway.app';
+// In dev, proxy to local server. In production, same domain so relative URLs work.
+const BASE_URL = import.meta.env.DEV ? 'http://localhost:3001' : '';
 
 // Anonymous session ID stored in localStorage — replaces Clerk auth
 const getSessionId = () => {

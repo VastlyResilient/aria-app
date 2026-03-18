@@ -1,9 +1,13 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { initDb } from './db/db.js';
 import { requireAuth } from './middleware/auth.js';
 import { fal } from '@fal-ai/client';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 import projectsRouter from './routes/projects.js';
 import step1Router from './routes/step1.js';
@@ -28,6 +32,10 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' })); // large limit for base64 image uploads
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// ── Serve React frontend ──────────────────────────────────────────────────────
+const webDist = join(__dirname, '../web/dist');
+app.use(express.static(webDist));
+
 // ── Health check (no auth) ───────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'aria-server' }));
 
@@ -43,6 +51,11 @@ app.use('/api/step4',    step4Router);
 app.use('/api/step5',    step5Router);
 app.use('/api/step6',    step6Router);
 app.use('/api/jobs',     jobsRouter);
+
+// ── SPA fallback — serve index.html for all non-API routes ───────────────────
+app.get('*', (req, res) => {
+  res.sendFile(join(webDist, 'index.html'));
+});
 
 // ── Global error handler ─────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
