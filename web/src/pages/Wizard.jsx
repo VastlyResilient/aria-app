@@ -16,6 +16,7 @@ export default function Wizard() {
   const { step, setStep, projectId, setProjectId } = useProjectStore();
   const [guideOpen, setGuideOpen] = useState(false);
   const [initializing, setInitializing] = useState(!projectId);
+  const [initError, setInitError] = useState(null);
 
   useEffect(() => {
     if (projectId) return;
@@ -24,7 +25,10 @@ export default function Wizard() {
         setProjectId(res.id);
         setInitializing(false);
       })
-      .catch(() => setInitializing(false));
+      .catch(err => {
+        setInitError(err.message);
+        setInitializing(false);
+      });
   }, []);
 
   if (initializing) {
@@ -32,6 +36,16 @@ export default function Wizard() {
       <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
         <div className="spin" style={{ width: 28, height: 28, border: `2px solid ${T.gold}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
         <span style={{ fontSize: 10, fontFamily: 'monospace', color: T.muted, letterSpacing: 2 }}>INITIALIZING...</span>
+      </div>
+    );
+  }
+
+  if (initError) {
+    return (
+      <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 24 }}>
+        <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#c94a4a', letterSpacing: 2 }}>FAILED TO CONNECT TO SERVER</span>
+        <span style={{ fontSize: 10, fontFamily: 'monospace', color: T.muted, textAlign: 'center' }}>{initError}</span>
+        <button onClick={() => window.location.reload()} style={{ fontSize: 10, fontFamily: 'monospace', color: T.gold, background: 'none', border: `1px solid ${T.gold}`, padding: '10px 20px', borderRadius: 5, cursor: 'pointer', letterSpacing: 2 }}>RETRY</button>
       </div>
     );
   }

@@ -91,7 +91,7 @@ export default function Step1PhotoUpload({ projectId, onNext }) {
       pollConversion(requestId, roomId);
     } catch (err) {
       setPhotoConverting(roomId, false);
-      alert('Upload failed. Please try again.');
+      alert('Upload failed: ' + err.message);
     }
   }, [projectId, selectedPhotos, togglePhoto, setPhotoFile, setPhotoConverting, pollConversion]);
 
