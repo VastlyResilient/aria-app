@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://aria-app-production.up.railway.app';
 
 // Anonymous session ID stored in localStorage — replaces Clerk auth
 const getSessionId = () => {
