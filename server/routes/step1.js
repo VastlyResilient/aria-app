@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db/db.js';
-import { uploadImage, submitOutpaintingJob, getJobStatus, OUTPAINTING_MODEL } from '../services/falai.js';
+import { uploadImage, prepareOutpaintAssets, submitOutpaintingJob, getJobStatus, OUTPAINTING_MODEL } from '../services/falai.js';
 import { updateProject } from './projects.js';
 import { OUTPAINTING_16x9_PROMPT } from '../prompts.js';
 
@@ -14,8 +14,11 @@ router.post('/convert', async (req, res) => {
       return res.status(400).json({ error: 'projectId, roomId, and imageDataUrl are required' });
     }
 
-    // Upload image to fal.ai storage
-    const originalUrl = await uploadImage(imageDataUrl);
+    // Upload original + prepare 16:9 padded image + mask for fill model
+    const [originalUrl, { paddedUrl, maskUrl }] = await Promise.all([
+      uploadImage(imageDataUrl),
+      prepareOutpaintAssets(imageDataUrl),
+    ]);
 
     // Save original URL to project
     const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
@@ -29,8 +32,8 @@ router.post('/convert', async (req, res) => {
     data.photos[roomId] = { ...data.photos[roomId], original: originalUrl };
     await query('UPDATE projects SET data = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(data), projectId]);
 
-    // Submit fal.ai outpainting job (fast model)
-    const requestId = await submitOutpaintingJob(originalUrl, OUTPAINTING_16x9_PROMPT);
+    // Submit fal.ai outpainting job with padded image + mask
+    const requestId = await submitOutpaintingJob(paddedUrl, maskUrl, OUTPAINTING_16x9_PROMPT);
 
     // Store job record
     await query(

@@ -1,4 +1,5 @@
 import { fal } from '@fal-ai/client';
+import sharp from 'sharp';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -26,6 +27,71 @@ export const uploadImage = async (imageDataUrl) => {
   return url;
 };
 
+// ── Build 16:9 padded image + mask, upload both, return URLs ─────────────────
+// The fill model needs:
+//   image_url  = original image centered on a 16:9 canvas (gray fill on sides)
+//   mask_url   = white on the padded areas, black on the original area
+export const prepareOutpaintAssets = async (imageDataUrl) => {
+  const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, '');
+  const inputBuffer = Buffer.from(base64Data, 'base64');
+
+  const meta = await sharp(inputBuffer).metadata();
+  const origW = meta.width;
+  const origH = meta.height;
+
+  // Compute 16:9 target — expand width to match, or expand height if portrait
+  let targetW, targetH;
+  if (origW / origH >= 16 / 9) {
+    // Already wider than 16:9 — pad height
+    targetW = origW;
+    targetH = Math.round(origW * 9 / 16);
+  } else {
+    // Portrait or square — pad width
+    targetW = Math.round(origH * 16 / 9);
+    targetH = origH;
+  }
+
+  const left = Math.floor((targetW - origW) / 2);
+  const top = Math.floor((targetH - origH) / 2);
+
+  // Padded image: original centered on neutral gray canvas
+  const paddedBuffer = await sharp(inputBuffer)
+    .extend({
+      top,
+      bottom: targetH - origH - top,
+      left,
+      right: targetW - origW - left,
+      background: { r: 128, g: 128, b: 128, alpha: 1 },
+    })
+    .jpeg({ quality: 92 })
+    .toBuffer();
+
+  // Mask: white (255) where we want fill, black (0) where original lives
+  const maskBuffer = await sharp({
+    create: {
+      width: targetW,
+      height: targetH,
+      channels: 3,
+      background: { r: 255, g: 255, b: 255 }, // all white
+    },
+  })
+    .composite([{
+      input: Buffer.alloc(origW * origH * 3, 0), // black rectangle
+      raw: { width: origW, height: origH, channels: 3 },
+      left,
+      top,
+    }])
+    .jpeg()
+    .toBuffer();
+
+  const [paddedUrl, maskUrl] = await Promise.all([
+    fal.storage.upload(new Blob([paddedBuffer], { type: 'image/jpeg' })),
+    fal.storage.upload(new Blob([maskBuffer], { type: 'image/jpeg' })),
+  ]);
+
+  return { paddedUrl, maskUrl };
+};
+
 // ── Submit a single image-to-image job ──────────────────────────────────────
 export const submitImageJob = async (imageUrl, prompt) => {
   const { request_id } = await fal.queue.submit(IMAGE_MODEL, {
@@ -40,10 +106,11 @@ export const submitImageJob = async (imageUrl, prompt) => {
 };
 
 // ── Submit a fast outpainting job (16:9 conversion) ──────────────────────────
-export const submitOutpaintingJob = async (imageUrl, prompt) => {
+export const submitOutpaintingJob = async (paddedUrl, maskUrl, prompt) => {
   const { request_id } = await fal.queue.submit(OUTPAINTING_MODEL, {
     input: {
-      image_url: imageUrl,
+      image_url: paddedUrl,
+      mask_url: maskUrl,
       prompt,
       num_images: 1,
       enable_safety_checker: false,
