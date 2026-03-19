@@ -39,6 +39,24 @@ app.use(express.static(webDist));
 // ── Health check (no auth) ───────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'aria-server' }));
 
+// ── Temp image store — serves padded/mask images to fal.ai (no auth) ─────────
+// fal.ai fetches these URLs directly, so they must be public (no auth header)
+export const tempImageStore = new Map(); // id → { padded: Buffer, mask: Buffer }
+
+app.get('/temp/:id/padded', (req, res) => {
+  const entry = tempImageStore.get(req.params.id);
+  if (!entry) return res.status(404).end();
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.send(entry.padded);
+});
+
+app.get('/temp/:id/mask', (req, res) => {
+  const entry = tempImageStore.get(req.params.id);
+  if (!entry) return res.status(404).end();
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.send(entry.mask);
+});
+
 // ── Auth middleware on all /api routes ───────────────────────────────────────
 app.use('/api', requireAuth);
 

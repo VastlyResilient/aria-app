@@ -1,5 +1,6 @@
 import { fal } from '@fal-ai/client';
 import sharp from 'sharp';
+import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -28,31 +29,18 @@ export const uploadImage = async (imageDataUrl) => {
   return url;
 };
 
-// ── Helper: upload a buffer to fal.ai storage with retry ─────────────────────
-const uploadBuffer = async (buffer, mimeType, retries = 2) => {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const blob = new Blob([buffer], { type: mimeType });
-      return await fal.storage.upload(blob);
-    } catch (err) {
-      if (i === retries) throw err;
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-    }
-  }
-};
-
-// ── Build 16:9 padded image + mask, upload sequentially, return URLs ──────────
-// The fill model needs:
-//   image_url  = original image centered on a 16:9 canvas (gray fill on sides)
-//   mask_url   = white on the padded areas, black on the original area
+// ── Build 16:9 padded image + mask, serve from Railway, return URLs ───────────
+// Avoids fal.ai storage entirely — stores buffers in memory and serves them
+// via /temp/:id/padded and /temp/:id/mask (public, no auth required)
 export const prepareOutpaintAssets = async (imageDataUrl) => {
+  const { tempImageStore } = await import('../index.js');
+
   const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, '');
   const inputBuffer = Buffer.from(base64Data, 'base64');
 
-  // Cap to 1920px max width to keep uploads fast and within memory limits
-  const MAX_W = 1920;
+  // Cap to 1920px max width
   const resizedInput = await sharp(inputBuffer)
-    .resize({ width: MAX_W, withoutEnlargement: true })
+    .resize({ width: 1920, withoutEnlargement: true })
     .jpeg({ quality: 90 })
     .toBuffer();
 
@@ -85,8 +73,7 @@ export const prepareOutpaintAssets = async (imageDataUrl) => {
     .jpeg({ quality: 90 })
     .toBuffer();
 
-  // Mask: white canvas with a black rectangle over the original image area
-  // Use sharp to create the black rect (avoids large raw buffer allocation)
+  // Mask: white canvas with black rect over original image area
   const blackRect = await sharp({
     create: { width: origW, height: origH, channels: 3, background: { r: 0, g: 0, b: 0 } },
   }).jpeg().toBuffer();
@@ -98,11 +85,19 @@ export const prepareOutpaintAssets = async (imageDataUrl) => {
     .jpeg()
     .toBuffer();
 
-  // Upload sequentially to avoid overwhelming fal.ai storage
-  const paddedUrl = await uploadBuffer(paddedBuffer, 'image/jpeg');
-  const maskUrl = await uploadBuffer(maskBuffer, 'image/jpeg');
+  // Store in memory and serve from Railway — no fal.ai storage upload needed
+  const tempId = randomUUID();
+  tempImageStore.set(tempId, { padded: paddedBuffer, mask: maskBuffer });
+  setTimeout(() => tempImageStore.delete(tempId), 15 * 60 * 1000); // clean up after 15 min
 
-  return { paddedUrl, maskUrl };
+  const BASE_URL = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : `http://localhost:${process.env.PORT || 3001}`;
+
+  return {
+    paddedUrl: `${BASE_URL}/temp/${tempId}/padded`,
+    maskUrl: `${BASE_URL}/temp/${tempId}/mask`,
+  };
 };
 
 // ── Submit a single image-to-image job ──────────────────────────────────────
