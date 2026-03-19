@@ -9,7 +9,8 @@ export default function Step3TransformRooms({ projectId, onNext }) {
   const { selectedPhotos, photoPreviewUrls, convertedUrls, rooms, currentRoomIndex, setCurrentRoomIndex, updateRoom } = useProjectStore();
   const [generating, setGenerating] = useState(false);
 
-  const selectedRooms = ROOMS.filter(r => selectedPhotos.includes(r.id));
+  // Hero is never transformed — it's used only for the video intro
+  const selectedRooms = ROOMS.filter(r => selectedPhotos.includes(r.id) && r.id !== 'hero');
   const activeRoom = selectedRooms[currentRoomIndex];
   const roomData = rooms.find(r => r.id === activeRoom?.id);
   const allTransformed = selectedRooms.every(r => rooms.find(x => x.id === r.id)?.selectedVersion != null);

@@ -25,6 +25,7 @@ router.post('/transform', async (req, res) => {
   try {
     const { projectId, roomId } = req.body;
     if (!projectId || !roomId) return res.status(400).json({ error: 'projectId and roomId required' });
+    if (roomId === 'hero') return res.status(400).json({ error: 'Hero photo is not transformed in Step 3 — it is used for the video intro only' });
 
     const project = await getProject(projectId, req.userId);
     const data = project.data;
