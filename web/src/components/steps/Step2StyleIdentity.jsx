@@ -27,7 +27,7 @@ export default function Step2StyleIdentity({ projectId, onNext }) {
     setSuggestions([]);
     setShowDropdown(false);
     clearTimeout(debounceRef.current);
-    if (val.length < 4) return;
+    if (val.length < 2) return;
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(

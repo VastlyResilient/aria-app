@@ -6,8 +6,20 @@ dotenv.config();
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-sonnet-4-20250514';
 
+// ── Download image and convert to base64 for Claude API ──────────────────────
+// Claude cannot fetch fal.ai CDN URLs directly — must pass as base64
+const fetchImageAsBase64 = async (url) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch image for Claude: ${res.status}`);
+  const buffer = await res.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString('base64');
+  const mediaType = (res.headers.get('content-type') || 'image/jpeg').split(';')[0];
+  return { base64, mediaType };
+};
+
 // ── Analyze property and return 5 style options ──────────────────────────────
 export const analyzeStyleOptions = async (heroImageUrl, address) => {
+  const { base64, mediaType } = await fetchImageAsBase64(heroImageUrl);
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 2048,
@@ -18,7 +30,7 @@ export const analyzeStyleOptions = async (heroImageUrl, address) => {
         content: [
           {
             type: 'image',
-            source: { type: 'url', url: heroImageUrl },
+            source: { type: 'base64', media_type: mediaType, data: base64 },
           },
           {
             type: 'text',
@@ -37,6 +49,7 @@ export const analyzeStyleOptions = async (heroImageUrl, address) => {
 
 // ── Generate full style identity document for selected style ─────────────────
 export const generateStyleIdentity = async (heroImageUrl, address, selectedStyleId, selectedStyleLabel) => {
+  const { base64, mediaType } = await fetchImageAsBase64(heroImageUrl);
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 2048,
@@ -47,7 +60,7 @@ export const generateStyleIdentity = async (heroImageUrl, address, selectedStyle
         content: [
           {
             type: 'image',
-            source: { type: 'url', url: heroImageUrl },
+            source: { type: 'base64', media_type: mediaType, data: base64 },
           },
           {
             type: 'text',
@@ -67,6 +80,10 @@ export const generateStyleIdentity = async (heroImageUrl, address, selectedStyle
 
 // ── Generate animation prompt from before/after frames (silent) ──────────────
 export const generateAnimationPrompt = async (beforeImageUrl, afterImageUrl) => {
+  const [before, after] = await Promise.all([
+    fetchImageAsBase64(beforeImageUrl),
+    fetchImageAsBase64(afterImageUrl),
+  ]);
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 512,
@@ -77,11 +94,11 @@ export const generateAnimationPrompt = async (beforeImageUrl, afterImageUrl) => 
         content: [
           {
             type: 'image',
-            source: { type: 'url', url: beforeImageUrl },
+            source: { type: 'base64', media_type: before.mediaType, data: before.base64 },
           },
           {
             type: 'image',
-            source: { type: 'url', url: afterImageUrl },
+            source: { type: 'base64', media_type: after.mediaType, data: after.base64 },
           },
           {
             type: 'text',
