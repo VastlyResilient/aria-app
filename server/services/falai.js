@@ -5,15 +5,16 @@ dotenv.config();
 
 fal.config({ credentials: process.env.FAL_KEY });
 
-// Model for room transformations (image-to-image)
-export const IMAGE_MODEL = 'fal-ai/flux-pro/v1.1-ultra';
+// True img2img model — preserves building/room structure, transforms style
+// strength 0.65: keeps architecture/layout, changes materials/finishes/landscaping
+export const IMAGE_MODEL = 'fal-ai/flux/dev/image-to-image';
 // Dedicated fill/outpainting model for 16:9 conversion
 export const OUTPAINTING_MODEL = 'fal-ai/flux-pro/v1/fill';
 
 // Video generation models
 const VIDEO_MODELS = {
-  kling: 'fal-ai/kling-video/v2.1/pro/image-to-video',
-  seedance: 'fal-ai/bytedance/seedance-video/image-to-video',
+  kling: 'fal-ai/kling-video/v1.6/pro/image-to-video',
+  seedance: 'fal-ai/minimax/video-01-live',
 };
 
 // ── Upload a base64 data URL to fal.ai storage, returns hosted URL ──────────
@@ -98,6 +99,9 @@ export const submitImageJob = async (imageUrl, prompt) => {
     input: {
       image_url: imageUrl,
       prompt,
+      strength: 0.65,         // 0=keep original exactly, 1=ignore original fully
+      num_inference_steps: 28,
+      guidance_scale: 3.5,
       num_images: 1,
       enable_safety_checker: false,
     },
@@ -135,7 +139,7 @@ export const submitVideoJob = async (imageUrl, prompt, videoModel = 'kling', dur
     input: {
       image_url: imageUrl,
       prompt,
-      duration: String(durationSeconds),
+      duration: durationSeconds,   // numeric, not string
       aspect_ratio: '16:9',
     },
   });

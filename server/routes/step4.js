@@ -56,8 +56,8 @@ router.post('/animate', async (req, res) => {
     // Combine both prompts for the full video instruction
     const fullVideoPrompt = `${animationPrompt}\n\n${dollyPrompt}`;
 
-    // Stage 2 — Fire 2 parallel video jobs
-    const [requestId1, requestId2] = await submitTwoParallelVideoJobs(originalUrl, fullVideoPrompt, videoModel, 5);
+    // Stage 2 — Fire 2 parallel video jobs animating the renovated image
+    const [requestId1, requestId2] = await submitTwoParallelVideoJobs(renovatedUrl, fullVideoPrompt, videoModel, 5);
 
     // Store jobs
     await query(
