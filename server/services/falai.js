@@ -4,10 +4,9 @@ dotenv.config();
 
 fal.config({ credentials: process.env.FAL_KEY });
 
-// Fast model for 16:9 outpainting (speed over quality)
-const OUTPAINTING_MODEL = 'fal-ai/flux/dev';
-// High quality model for room transformations
+// Model for outpainting + room transformations
 const IMAGE_MODEL = 'fal-ai/flux-pro/v1.1/ultra';
+const OUTPAINTING_MODEL = IMAGE_MODEL;
 
 // Video generation models
 const VIDEO_MODELS = {

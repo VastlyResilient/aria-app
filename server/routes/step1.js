@@ -66,8 +66,8 @@ router.get('/status/:requestId', async (req, res) => {
       return res.json({ status: 'completed', result: job.result });
     }
 
-    // Check fal.ai (use outpainting model)
-    const falStatus = await getJobStatus(requestId, 'fal-ai/flux/dev');
+    // Check fal.ai
+    const falStatus = await getJobStatus(requestId);
 
     if (falStatus.status === 'completed' && falStatus.url) {
       // Save result to project
