@@ -28,7 +28,20 @@ export const uploadImage = async (imageDataUrl) => {
   return url;
 };
 
-// ── Build 16:9 padded image + mask, upload both, return URLs ─────────────────
+// ── Helper: upload a buffer to fal.ai storage with retry ─────────────────────
+const uploadBuffer = async (buffer, mimeType, retries = 2) => {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const blob = new Blob([buffer], { type: mimeType });
+      return await fal.storage.upload(blob);
+    } catch (err) {
+      if (i === retries) throw err;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+};
+
+// ── Build 16:9 padded image + mask, upload sequentially, return URLs ──────────
 // The fill model needs:
 //   image_url  = original image centered on a 16:9 canvas (gray fill on sides)
 //   mask_url   = white on the padded areas, black on the original area
@@ -36,18 +49,23 @@ export const prepareOutpaintAssets = async (imageDataUrl) => {
   const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, '');
   const inputBuffer = Buffer.from(base64Data, 'base64');
 
-  const meta = await sharp(inputBuffer).metadata();
+  // Cap to 1920px max width to keep uploads fast and within memory limits
+  const MAX_W = 1920;
+  const resizedInput = await sharp(inputBuffer)
+    .resize({ width: MAX_W, withoutEnlargement: true })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+
+  const meta = await sharp(resizedInput).metadata();
   const origW = meta.width;
   const origH = meta.height;
 
-  // Compute 16:9 target — expand width to match, or expand height if portrait
+  // Compute 16:9 target dimensions
   let targetW, targetH;
   if (origW / origH >= 16 / 9) {
-    // Already wider than 16:9 — pad height
     targetW = origW;
     targetH = Math.round(origW * 9 / 16);
   } else {
-    // Portrait or square — pad width
     targetW = Math.round(origH * 16 / 9);
     targetH = origH;
   }
@@ -55,8 +73,8 @@ export const prepareOutpaintAssets = async (imageDataUrl) => {
   const left = Math.floor((targetW - origW) / 2);
   const top = Math.floor((targetH - origH) / 2);
 
-  // Padded image: original centered on neutral gray canvas
-  const paddedBuffer = await sharp(inputBuffer)
+  // Padded image: original centered on neutral gray 16:9 canvas
+  const paddedBuffer = await sharp(resizedInput)
     .extend({
       top,
       bottom: targetH - origH - top,
@@ -64,31 +82,25 @@ export const prepareOutpaintAssets = async (imageDataUrl) => {
       right: targetW - origW - left,
       background: { r: 128, g: 128, b: 128, alpha: 1 },
     })
-    .jpeg({ quality: 92 })
+    .jpeg({ quality: 90 })
     .toBuffer();
 
-  // Mask: white (255) where we want fill, black (0) where original lives
+  // Mask: white canvas with a black rectangle over the original image area
+  // Use sharp to create the black rect (avoids large raw buffer allocation)
+  const blackRect = await sharp({
+    create: { width: origW, height: origH, channels: 3, background: { r: 0, g: 0, b: 0 } },
+  }).jpeg().toBuffer();
+
   const maskBuffer = await sharp({
-    create: {
-      width: targetW,
-      height: targetH,
-      channels: 3,
-      background: { r: 255, g: 255, b: 255 }, // all white
-    },
+    create: { width: targetW, height: targetH, channels: 3, background: { r: 255, g: 255, b: 255 } },
   })
-    .composite([{
-      input: Buffer.alloc(origW * origH * 3, 0), // black rectangle
-      raw: { width: origW, height: origH, channels: 3 },
-      left,
-      top,
-    }])
+    .composite([{ input: blackRect, left, top }])
     .jpeg()
     .toBuffer();
 
-  const [paddedUrl, maskUrl] = await Promise.all([
-    fal.storage.upload(new Blob([paddedBuffer], { type: 'image/jpeg' })),
-    fal.storage.upload(new Blob([maskBuffer], { type: 'image/jpeg' })),
-  ]);
+  // Upload sequentially to avoid overwhelming fal.ai storage
+  const paddedUrl = await uploadBuffer(paddedBuffer, 'image/jpeg');
+  const maskUrl = await uploadBuffer(maskBuffer, 'image/jpeg');
 
   return { paddedUrl, maskUrl };
 };

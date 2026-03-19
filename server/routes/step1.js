@@ -14,11 +14,9 @@ router.post('/convert', async (req, res) => {
       return res.status(400).json({ error: 'projectId, roomId, and imageDataUrl are required' });
     }
 
-    // Upload original + prepare 16:9 padded image + mask for fill model
-    const [originalUrl, { paddedUrl, maskUrl }] = await Promise.all([
-      uploadImage(imageDataUrl),
-      prepareOutpaintAssets(imageDataUrl),
-    ]);
+    // Upload sequentially to avoid overwhelming fal.ai storage API
+    const originalUrl = await uploadImage(imageDataUrl);
+    const { paddedUrl, maskUrl } = await prepareOutpaintAssets(imageDataUrl);
 
     // Save original URL to project
     const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
