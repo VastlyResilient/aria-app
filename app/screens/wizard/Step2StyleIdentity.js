@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  TextInput, Image, StyleSheet, ActivityIndicator, Alert, FlatList,
+  TextInput, Image, StyleSheet, Animated, Alert,
 } from 'react-native';
 import { colors, fonts, spacing } from '../../constants/theme';
 import { useProjectStore } from '../../store/projectStore';
@@ -9,6 +9,53 @@ import GuideBanner from '../../components/wizard/GuideBanner';
 import * as api from '../../services/api';
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+
+// ── Pixel shimmer animation for preview loading state ─────────────────────────
+const PIXEL_COLS = 12;
+const PIXEL_ROWS = 7;
+const PIXELS = Array.from({ length: PIXEL_COLS * PIXEL_ROWS }, (_, i) => {
+  const b = Math.random();
+  return {
+    key: i,
+    color: b < 0.12 ? '#d4af37' : b < 0.35 ? '#7a5c18' : b < 0.55 ? '#3a2a08' : '#12100e',
+  };
+});
+
+function PixelShimmer({ label }) {
+  const scanAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(scanAnim, { toValue: 1, duration: 1600, useNativeDriver: true })
+    ).start();
+    return () => scanAnim.stopAnimation();
+  }, []);
+
+  const translateY = scanAnim.interpolate({ inputRange: [0, 1], outputRange: [-32, 200] });
+
+  return (
+    <View style={shimmerStyles.container}>
+      {/* Static pixel grid */}
+      <View style={shimmerStyles.grid}>
+        {PIXELS.map(p => (
+          <View key={p.key} style={[shimmerStyles.pixel, { backgroundColor: p.color }]} />
+        ))}
+      </View>
+      {/* Sweeping scan line */}
+      <Animated.View style={[shimmerStyles.scanLine, { transform: [{ translateY }] }]} />
+      {/* Label */}
+      <Text style={shimmerStyles.label}>RENDERING {label.toUpperCase()}...</Text>
+    </View>
+  );
+}
+
+const shimmerStyles = StyleSheet.create({
+  container: { height: 200, backgroundColor: '#09090f', overflow: 'hidden', justifyContent: 'flex-end' },
+  grid: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flexDirection: 'row', flexWrap: 'wrap', padding: 6, gap: 3 },
+  pixel: { width: `${100 / PIXEL_COLS - 1}%`, height: 22, borderRadius: 1 },
+  scanLine: { position: 'absolute', left: 0, right: 0, height: 28, backgroundColor: 'rgba(212,175,55,0.25)' },
+  label: { fontSize: 9, fontFamily: 'monospace', color: '#d4b93a', letterSpacing: 2, textAlign: 'center', marginBottom: 12 },
+});
 
 export default function Step2StyleIdentity({ projectId, onNext }) {
   const {
@@ -189,12 +236,7 @@ export default function Step2StyleIdentity({ projectId, onNext }) {
 
                 {(previewUrl || isLoading) && (
                   <View style={styles.previewImageWrapper}>
-                    {isLoading && (
-                      <View style={styles.previewLoading}>
-                        <ActivityIndicator color={colors.gold} />
-                        <Text style={styles.previewLoadingText}>Generating {opt.label} preview...</Text>
-                      </View>
-                    )}
+                    {isLoading && <PixelShimmer label={opt.label} />}
                     {previewUrl && (
                       <Image source={{ uri: previewUrl }} style={styles.previewImage} resizeMode="cover" />
                     )}

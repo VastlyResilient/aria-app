@@ -61,7 +61,7 @@ router.post('/lock', async (req, res) => {
   }
 });
 
-// POST /preview — generate AI styled interior preview for a style option
+// POST /preview — fast style preview via flux/schnell text-to-image (4 steps, ~5s)
 router.post('/preview', async (req, res) => {
   try {
     const { projectId, styleId, styleLabel, styleDescription } = req.body;
@@ -69,38 +69,13 @@ router.post('/preview', async (req, res) => {
       return res.status(400).json({ error: 'projectId, styleId, and styleLabel required' });
     }
 
-    const project = await getProject(projectId, req.userId);
-    const photos = project.data?.photos || {};
+    const prompt = `Photorealistic interior design, ${styleLabel} renovation style. ${styleDescription}. Professional real estate photography, bright natural light, luxury home staging, wide angle living room view, magazine-quality finish.`;
 
-    // Pick best interior photo: living > bedroom > kitchen > any non-hero/non-backyard
-    const priority = ['living', 'bedroom', 'kitchen'];
-    let interiorUrl = null;
-    for (const roomId of priority) {
-      const photo = photos[roomId];
-      if (photo?.converted16x9 || photo?.original) {
-        interiorUrl = photo.converted16x9 || photo.original;
-        break;
-      }
-    }
-    if (!interiorUrl) {
-      for (const [roomId, photo] of Object.entries(photos)) {
-        if (roomId !== 'hero' && roomId !== 'backyard' && (photo?.converted16x9 || photo?.original)) {
-          interiorUrl = photo.converted16x9 || photo.original;
-          break;
-        }
-      }
-    }
-    if (!interiorUrl) {
-      return res.status(400).json({ error: 'No interior photo available. Upload a living room or bedroom photo in Step 1.' });
-    }
-
-    const prompt = `Interior design renovation, ${styleLabel} style. ${styleDescription}. Photorealistic professional interior design photography, bright natural light, well-staged and furnished, magazine-quality finish. Preserve the exact room layout and architecture — transform only the materials, colors, furnishings, and finishes.`;
-
-    const result = await fal.subscribe(IMAGE_MODEL, {
+    const result = await fal.subscribe('fal-ai/flux/schnell', {
       input: {
-        image_url: interiorUrl,
         prompt,
-        image_prompt_strength: 0.38,
+        image_size: 'landscape_16_9',
+        num_inference_steps: 4,
         num_images: 1,
         enable_safety_checker: false,
       },
