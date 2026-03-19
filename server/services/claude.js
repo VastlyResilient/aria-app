@@ -6,10 +6,11 @@ dotenv.config();
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-sonnet-4-20250514';
 
-// ── Download image and convert to base64 for Claude API ──────────────────────
-// Claude cannot fetch fal.ai CDN URLs directly — must pass as base64
-const fetchImageAsBase64 = async (url) => {
-  const res = await fetch(url);
+// ── Resolve an image to { base64, mediaType } for Claude API ─────────────────
+// Accepts either a URL (fetched) or a pre-stored { base64, mediaType } object.
+const resolveImage = async (source) => {
+  if (source && typeof source === 'object') return source; // already base64
+  const res = await fetch(source);
   if (!res.ok) throw new Error(`Failed to fetch image for Claude: ${res.status}`);
   const buffer = await res.arrayBuffer();
   const base64 = Buffer.from(buffer).toString('base64');
@@ -19,7 +20,7 @@ const fetchImageAsBase64 = async (url) => {
 
 // ── Analyze property and return 5 style options ──────────────────────────────
 export const analyzeStyleOptions = async (heroImageUrl, address) => {
-  const { base64, mediaType } = await fetchImageAsBase64(heroImageUrl);
+  const { base64, mediaType } = await resolveImage(heroImageUrl);
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 2048,
@@ -49,7 +50,7 @@ export const analyzeStyleOptions = async (heroImageUrl, address) => {
 
 // ── Generate full style identity document for selected style ─────────────────
 export const generateStyleIdentity = async (heroImageUrl, address, selectedStyleId, selectedStyleLabel) => {
-  const { base64, mediaType } = await fetchImageAsBase64(heroImageUrl);
+  const { base64, mediaType } = await resolveImage(heroImageUrl);
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 2048,
@@ -81,8 +82,8 @@ export const generateStyleIdentity = async (heroImageUrl, address, selectedStyle
 // ── Generate animation prompt from before/after frames (silent) ──────────────
 export const generateAnimationPrompt = async (beforeImageUrl, afterImageUrl) => {
   const [before, after] = await Promise.all([
-    fetchImageAsBase64(beforeImageUrl),
-    fetchImageAsBase64(afterImageUrl),
+    resolveImage(beforeImageUrl),
+    resolveImage(afterImageUrl),
   ]);
   const message = await client.messages.create({
     model: MODEL,

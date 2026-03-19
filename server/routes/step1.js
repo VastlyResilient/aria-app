@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
+import sharp from 'sharp';
 import { query } from '../db/db.js';
 import { uploadImage, convertTo16x9 } from '../services/falai.js';
 
@@ -27,6 +28,17 @@ router.post('/convert', async (req, res) => {
     const data = project.data;
     data.photos = data.photos || {};
     data.photos[roomId] = { ...data.photos[roomId], original: originalUrl, converted16x9: converted16x9Url };
+
+    // For the hero photo, also store a compact base64 so Claude can access it
+    // even after server restarts (temp URLs are in-memory only)
+    if (roomId === 'hero') {
+      const raw = imageDataUrl.replace(/^data:image\/\w+;base64,/, '');
+      const compactBuf = await sharp(Buffer.from(raw, 'base64'))
+        .resize({ width: 800, withoutEnlargement: true })
+        .jpeg({ quality: 75 })
+        .toBuffer();
+      data.photos.hero.claudeBase64 = compactBuf.toString('base64');
+    }
     await query('UPDATE projects SET data = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(data), projectId]);
 
     // Store completed job record

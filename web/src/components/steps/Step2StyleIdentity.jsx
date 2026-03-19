@@ -97,26 +97,35 @@ function PixelCanvas({ label }) {
   );
 }
 
-// ── Preview box: pixel animation while loading, fades into real image ─────────
+// ── Preview box: pixel canvas stays until image is fully downloaded ───────────
+// Canvas shows during fal.ai generation AND while browser downloads the image.
+// onError fallback ensures we never stay stuck on black if the load fails.
 function StylePreviewBox({ isLoading, previewUrl, label }) {
-  const [imgVisible, setImgVisible] = useState(false);
+  const [imgReady, setImgReady] = useState(false);
+  const showCanvas = isLoading || (!!previewUrl && !imgReady);
+
   return (
     <div style={{
       border: `1px solid ${T.border}`, borderTop: 'none',
       borderRadius: '0 0 6px 6px', overflow: 'hidden',
       background: '#09090f', height: 220, position: 'relative',
     }}>
-      {isLoading && <PixelCanvas label={label} />}
+      {showCanvas && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+          <PixelCanvas label={label} />
+        </div>
+      )}
       {previewUrl && (
         <img
           src={previewUrl}
           alt={`${label} preview`}
-          onLoad={() => setImgVisible(true)}
+          onLoad={() => setImgReady(true)}
+          onError={() => setImgReady(true)}
           style={{
-            position: 'absolute', inset: 0,
+            position: 'absolute', inset: 0, zIndex: 2,
             width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-            opacity: imgVisible ? 1 : 0,
-            transition: 'opacity 0.8s ease',
+            opacity: imgReady ? 1 : 0,
+            transition: 'opacity 0.6s ease',
           }}
         />
       )}

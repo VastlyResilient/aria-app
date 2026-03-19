@@ -20,15 +20,17 @@ router.post('/analyze', async (req, res) => {
     if (!projectId || !address) return res.status(400).json({ error: 'projectId and address required' });
 
     const project = await getProject(projectId, req.userId);
+    const heroBase64 = project.data?.photos?.hero?.claudeBase64;
     const heroUrl = project.data?.photos?.hero?.converted16x9 || project.data?.photos?.hero?.original;
-    if (!heroUrl) return res.status(400).json({ error: 'Hero photo not yet converted' });
+    if (!heroBase64 && !heroUrl) return res.status(400).json({ error: 'Hero photo not yet uploaded' });
 
     // Save address to project
     const data = { ...project.data, address };
     await query('UPDATE projects SET data = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(data), projectId]);
 
-    // Call Claude
-    const result = await analyzeStyleOptions(heroUrl, address);
+    // Use stored base64 (survives restarts) — fall back to URL if not yet stored
+    const heroSource = heroBase64 ? { base64: heroBase64, mediaType: 'image/jpeg' } : heroUrl;
+    const result = await analyzeStyleOptions(heroSource, address);
     res.json(result);
   } catch (err) {
     console.error('Step2 analyze error:', err);
@@ -43,12 +45,13 @@ router.post('/lock', async (req, res) => {
     if (!projectId || !selectedStyleId) return res.status(400).json({ error: 'projectId and selectedStyleId required' });
 
     const project = await getProject(projectId, req.userId);
+    const heroBase64 = project.data?.photos?.hero?.claudeBase64;
     const heroUrl = project.data?.photos?.hero?.converted16x9 || project.data?.photos?.hero?.original;
     const address = project.data?.address;
-    if (!heroUrl || !address) return res.status(400).json({ error: 'Missing hero photo or address' });
+    if ((!heroBase64 && !heroUrl) || !address) return res.status(400).json({ error: 'Missing hero photo or address' });
 
-    // Generate style identity via Claude
-    const styleIdentity = await generateStyleIdentity(heroUrl, address, selectedStyleId, selectedStyleLabel);
+    const heroSource = heroBase64 ? { base64: heroBase64, mediaType: 'image/jpeg' } : heroUrl;
+    const styleIdentity = await generateStyleIdentity(heroSource, address, selectedStyleId, selectedStyleLabel);
 
     // Save to project
     const data = { ...project.data, selectedStyle: selectedStyleId, styleIdentity };
