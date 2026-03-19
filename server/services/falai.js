@@ -18,15 +18,28 @@ const VIDEO_MODELS = {
   seedance: 'fal-ai/minimax/video-01-live',
 };
 
-// ── Upload a base64 data URL to fal.ai storage, returns hosted URL ──────────
+// ── Serve an image buffer from Railway and return its public URL ──────────────
+const serveFromRailway = async (buffer, suffix = 'image') => {
+  const { tempImageStore } = await import('../index.js');
+  const id = randomUUID();
+  // Store as a single-entry object keyed by suffix
+  const existing = tempImageStore.get(id) || {};
+  existing[suffix] = buffer;
+  tempImageStore.set(id, existing);
+  setTimeout(() => tempImageStore.delete(id), 15 * 60 * 1000);
+  const BASE_URL = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : `http://localhost:${process.env.PORT || 3001}`;
+  return `${BASE_URL}/temp/${id}/${suffix}`;
+};
+
+// ── Upload a base64 data URL — serves from Railway, no fal.ai storage ────────
 export const uploadImage = async (imageDataUrl) => {
   const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, '');
-  const mimeMatch = imageDataUrl.match(/^data:(image\/\w+);base64,/);
-  const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
   const buffer = Buffer.from(base64Data, 'base64');
-  const blob = new Blob([buffer], { type: mimeType });
-  const url = await fal.storage.upload(blob);
-  return url;
+  // Resize to max 1920px to keep it lean
+  const resized = await sharp(buffer).resize({ width: 1920, withoutEnlargement: true }).jpeg({ quality: 90 }).toBuffer();
+  return serveFromRailway(resized, 'original');
 };
 
 // ── Build 16:9 padded image + mask, serve from Railway, return URLs ───────────

@@ -43,18 +43,13 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'aria-server'
 // fal.ai fetches these URLs directly, so they must be public (no auth header)
 export const tempImageStore = new Map(); // id → { padded: Buffer, mask: Buffer }
 
-app.get('/temp/:id/padded', (req, res) => {
+app.get('/temp/:id/:suffix', (req, res) => {
   const entry = tempImageStore.get(req.params.id);
   if (!entry) return res.status(404).end();
+  const buf = entry[req.params.suffix];
+  if (!buf) return res.status(404).end();
   res.setHeader('Content-Type', 'image/jpeg');
-  res.send(entry.padded);
-});
-
-app.get('/temp/:id/mask', (req, res) => {
-  const entry = tempImageStore.get(req.params.id);
-  if (!entry) return res.status(404).end();
-  res.setHeader('Content-Type', 'image/jpeg');
-  res.send(entry.mask);
+  res.send(buf);
 });
 
 // ── Auth middleware on all /api routes ───────────────────────────────────────
