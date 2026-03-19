@@ -106,7 +106,8 @@ export const getJobStatus = async (requestId, modelId = IMAGE_MODEL) => {
 
     return { status: 'pending', url: null };
   } catch (err) {
-    return { status: 'pending', url: null };
+    console.error('getJobStatus error:', err.message);
+    return { status: 'failed', url: null };
   }
 };
 
