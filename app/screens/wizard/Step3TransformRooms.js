@@ -174,17 +174,26 @@ export default function Step3TransformRooms({ projectId, onNext }) {
             >
               <Text style={styles.regenBtnText}>↺ REGENERATE</Text>
             </TouchableOpacity>
-          </>
-        )}
 
-        {/* All done button */}
-        {allTransformed && (
-          <TouchableOpacity
-            onPress={() => { useProjectStore.getState().setStep(4); onNext(); }}
-            style={styles.doneBtn}
-          >
-            <Text style={styles.doneBtnText}>ALL DONE → ANIMATE</Text>
-          </TouchableOpacity>
+            {/* Next room or finish */}
+            {roomData?.selectedVersion && (
+              currentRoomIndex < selectedRooms.length - 1 ? (
+                <TouchableOpacity
+                  onPress={() => setCurrentRoomIndex(currentRoomIndex + 1)}
+                  style={styles.doneBtn}
+                >
+                  <Text style={styles.doneBtnText}>NEXT ROOM →</Text>
+                </TouchableOpacity>
+              ) : allTransformed ? (
+                <TouchableOpacity
+                  onPress={() => { useProjectStore.getState().setStep(4); onNext(); }}
+                  style={styles.doneBtn}
+                >
+                  <Text style={styles.doneBtnText}>ALL DONE → ANIMATE</Text>
+                </TouchableOpacity>
+              ) : null
+            )}
+          </>
         )}
       </ScrollView>
     </View>

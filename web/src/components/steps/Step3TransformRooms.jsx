@@ -110,13 +110,19 @@ export default function Step3TransformRooms({ projectId, onNext }) {
               })}
             </div>
             <button onClick={() => updateRoom(activeRoom.id, { version1: null, version2: null, selectedVersion: null })} style={{ ...btn(false, false), width: '100%', textAlign: 'center', marginBottom: 16 }}>↺ REGENERATE</button>
-          </>
-        )}
 
-        {allTransformed && (
-          <button onClick={() => { useProjectStore.getState().setStep(4); onNext(); }} style={{ ...btn(true, false), width: '100%', textAlign: 'center' }}>
-            ALL DONE → ANIMATE
-          </button>
+            {roomData?.selectedVersion && (
+              currentRoomIndex < selectedRooms.length - 1
+                ? <button onClick={() => setCurrentRoomIndex(currentRoomIndex + 1)} style={{ ...btn(true, false), width: '100%', textAlign: 'center' }}>
+                    NEXT ROOM →
+                  </button>
+                : allTransformed && (
+                  <button onClick={() => { useProjectStore.getState().setStep(4); onNext(); }} style={{ ...btn(true, false), width: '100%', textAlign: 'center' }}>
+                    ALL DONE → ANIMATE
+                  </button>
+                )
+            )}
+          </>
         )}
       </div>
     </div>
