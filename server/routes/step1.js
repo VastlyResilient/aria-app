@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../db/db.js';
-import { uploadImage, submitOutpaintingJob, getJobStatus } from '../services/falai.js';
+import { uploadImage, submitOutpaintingJob, getJobStatus, OUTPAINTING_MODEL } from '../services/falai.js';
 import { updateProject } from './projects.js';
 import { OUTPAINTING_16x9_PROMPT } from '../prompts.js';
 
@@ -34,8 +34,8 @@ router.post('/convert', async (req, res) => {
 
     // Store job record
     await query(
-      'INSERT INTO jobs (project_id, fal_request_id, job_type, room_id, status) VALUES ($1, $2, $3, $4, $5)',
-      [projectId, requestId, 'convert16x9', roomId, 'pending']
+      'INSERT INTO jobs (project_id, fal_request_id, job_type, room_id, status, fal_model_id) VALUES ($1, $2, $3, $4, $5, $6)',
+      [projectId, requestId, 'convert16x9', roomId, 'pending', OUTPAINTING_MODEL]
     );
 
     res.json({ requestId, roomId });
@@ -66,8 +66,8 @@ router.get('/status/:requestId', async (req, res) => {
       return res.json({ status: 'completed', result: job.result });
     }
 
-    // Check fal.ai
-    const falStatus = await getJobStatus(requestId);
+    // Check fal.ai using the model that was used to submit the job
+    const falStatus = await getJobStatus(requestId, job.fal_model_id);
 
     if (falStatus.status === 'completed' && falStatus.url) {
       // Save result to project

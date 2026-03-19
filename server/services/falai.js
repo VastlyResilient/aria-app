@@ -4,9 +4,10 @@ dotenv.config();
 
 fal.config({ credentials: process.env.FAL_KEY });
 
-// Model for outpainting + room transformations
-const IMAGE_MODEL = 'fal-ai/flux-pro/v1.1/ultra';
-const OUTPAINTING_MODEL = IMAGE_MODEL;
+// Model for room transformations (image-to-image)
+export const IMAGE_MODEL = 'fal-ai/flux-pro/v1.1-ultra';
+// Dedicated fill/outpainting model for 16:9 conversion
+export const OUTPAINTING_MODEL = 'fal-ai/flux-pro/v1/fill';
 
 // Video generation models
 const VIDEO_MODELS = {

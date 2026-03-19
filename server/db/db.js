@@ -38,6 +38,8 @@ export const initDb = async () => {
 
     CREATE INDEX IF NOT EXISTS jobs_fal_request_id_idx ON jobs(fal_request_id);
     CREATE INDEX IF NOT EXISTS jobs_project_id_idx ON jobs(project_id);
+
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS fal_model_id TEXT;
   `);
   console.log('Database tables ready.');
 };
