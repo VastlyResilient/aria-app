@@ -37,6 +37,7 @@ router.post('/transform', async (req, res) => {
     const prompt = getRoomImagePrompt(roomId, data.styleIdentity || '', sceneLabel);
 
     // Fire 2 parallel jobs
+    console.log(`[step3] transform ${roomId} | styleIdentity length: ${(data.styleIdentity || '').length} | prompt length: ${prompt.length}`);
     const [requestId1, requestId2] = await submitTwoParallelImageJobs(imageUrl, prompt);
 
     // Store job records
