@@ -57,6 +57,9 @@ export const analyzeStyle = (projectId, address) =>
 export const lockStyle = (projectId, selectedStyleId, selectedStyleLabel) =>
   request('POST', '/api/step2/lock', { projectId, selectedStyleId, selectedStyleLabel });
 
+export const previewStyle = (projectId, styleId, styleLabel, styleDescription) =>
+  request('POST', '/api/step2/preview', { projectId, styleId, styleLabel, styleDescription });
+
 // ── Step 3 ──────────────────────────────────────────────────────────────────
 
 export const transformRoom = (projectId, roomId) =>

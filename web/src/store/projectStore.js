@@ -19,6 +19,7 @@ export const useProjectStore = create((set, get) => ({
   styleOptions: [],
   selectedStyle: null,
   styleIdentity: null,
+  stylePreviews: {},
 
   // Steps 3 & 4
   rooms: [],
@@ -41,6 +42,7 @@ export const useProjectStore = create((set, get) => ({
   setStyleOptions: (o) => set({ styleOptions: o }),
   setSelectedStyle: (s) => set({ selectedStyle: s }),
   setStyleIdentity: (i) => set({ styleIdentity: i }),
+  setStylePreview: (styleId, url) => set((s) => ({ stylePreviews: { ...s.stylePreviews, [styleId]: url } })),
   setMusicTrack: (url) => set({ musicTrack: url }),
   setOutro: (data) => set((s) => ({ outro: { ...s.outro, ...data } })),
   setAgent: (data) => set((s) => ({ agent: { ...s.agent, ...data } })),

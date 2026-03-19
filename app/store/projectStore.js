@@ -11,6 +11,7 @@ const initialState = {
   styleOptions: [],
   selectedStyle: null,  // { id, label, description }
   styleIdentity: null,
+  stylePreviews: {},
   rooms: [],            // array of room objects from project record
   videoModel: 'kling',
   currentRoomIndex: 0,
@@ -31,6 +32,8 @@ export const useProjectStore = create((set, get) => ({
   setStyleOptions: (styleOptions) => set({ styleOptions }),
   setSelectedStyle: (selectedStyle) => set({ selectedStyle }),
   setStyleIdentity: (styleIdentity) => set({ styleIdentity }),
+  setStylePreview: (styleId, url) =>
+    set((state) => ({ stylePreviews: { ...state.stylePreviews, [styleId]: url } })),
   setMusicTrack: (url) => set({ musicTrack: url }),
   setOutro: (data) => set((state) => ({ outro: { ...state.outro, ...data } })),
   setAgent: (data) => set((state) => ({ agent: { ...state.agent, ...data } })),

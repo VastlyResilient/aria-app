@@ -48,6 +48,7 @@ export const checkConvertStatus = (requestId) => request('GET', `/api/step1/stat
 
 export const analyzeStyle = (projectId, address) => request('POST', '/api/step2/analyze', { projectId, address });
 export const lockStyle = (projectId, selectedStyleId, selectedStyleLabel) => request('POST', '/api/step2/lock', { projectId, selectedStyleId, selectedStyleLabel });
+export const previewStyle = (projectId, styleId, styleLabel, styleDescription) => request('POST', '/api/step2/preview', { projectId, styleId, styleLabel, styleDescription });
 
 export const transformRoom = (projectId, roomId) => request('POST', '/api/step3/transform', { projectId, roomId });
 export const checkTransformStatus = (projectId, roomId) => request('GET', `/api/step3/status/${projectId}/${roomId}`);
