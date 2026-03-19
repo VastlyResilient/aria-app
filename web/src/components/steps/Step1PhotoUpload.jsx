@@ -102,8 +102,13 @@ export default function Step1PhotoUpload({ projectId, onNext }) {
     setPhotoConverting(roomId, true);
 
     try {
-      const { requestId } = await api.convertPhoto(projectId, roomId, file);
-      pollConversion(requestId, roomId);
+      const res = await api.convertPhoto(projectId, roomId, file);
+      if (res.url) {
+        setPhotoConverting(roomId, false);
+        setPhotoConverted(roomId, true, res.url);
+      } else {
+        pollConversion(res.requestId, roomId);
+      }
     } catch (err) {
       setPhotoConverting(roomId, false);
       alert('Upload failed: ' + err.message);

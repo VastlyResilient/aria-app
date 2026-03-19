@@ -7,10 +7,7 @@ dotenv.config();
 fal.config({ credentials: process.env.FAL_KEY });
 
 // True img2img model — preserves building/room structure, transforms style
-// strength 0.65: keeps architecture/layout, changes materials/finishes/landscaping
 export const IMAGE_MODEL = 'fal-ai/flux/dev/image-to-image';
-// Dedicated fill/outpainting model for 16:9 conversion
-export const OUTPAINTING_MODEL = 'fal-ai/flux-pro/v1/fill';
 
 // Video generation models
 const VIDEO_MODELS = {
@@ -42,26 +39,21 @@ export const uploadImage = async (imageDataUrl) => {
   return serveFromRailway(resized, 'original');
 };
 
-// ── Build 16:9 padded image + mask, serve from Railway, return URLs ───────────
-// Avoids fal.ai storage entirely — stores buffers in memory and serves them
-// via /temp/:id/padded and /temp/:id/mask (public, no auth required)
-export const prepareOutpaintAssets = async (imageDataUrl) => {
-  const { tempImageStore } = await import('../index.js');
-
+// ── Convert image to 16:9 using blurred background — instant, no AI ──────────
+// Scales the original to fill a 16:9 canvas, blurs it as background,
+// then composites the original centered on top. Runs in < 1 second.
+export const convertTo16x9 = async (imageDataUrl) => {
   const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, '');
   const inputBuffer = Buffer.from(base64Data, 'base64');
 
-  // Cap to 1920px max width
-  const resizedInput = await sharp(inputBuffer)
+  const resized = await sharp(inputBuffer)
     .resize({ width: 1920, withoutEnlargement: true })
     .jpeg({ quality: 90 })
     .toBuffer();
 
-  const meta = await sharp(resizedInput).metadata();
-  const origW = meta.width;
-  const origH = meta.height;
+  const { width: origW, height: origH } = await sharp(resized).metadata();
 
-  // Compute 16:9 target dimensions
+  // Compute 16:9 canvas size
   let targetW, targetH;
   if (origW / origH >= 16 / 9) {
     targetW = origW;
@@ -74,43 +66,20 @@ export const prepareOutpaintAssets = async (imageDataUrl) => {
   const left = Math.floor((targetW - origW) / 2);
   const top = Math.floor((targetH - origH) / 2);
 
-  // Padded image: original centered on neutral gray 16:9 canvas
-  const paddedBuffer = await sharp(resizedInput)
-    .extend({
-      top,
-      bottom: targetH - origH - top,
-      left,
-      right: targetW - origW - left,
-      background: { r: 128, g: 128, b: 128, alpha: 1 },
-    })
+  // Background: fill canvas by scaling original, then blur heavily
+  const bgBuffer = await sharp(resized)
+    .resize(targetW, targetH, { fit: 'cover' })
+    .blur(25)
+    .jpeg({ quality: 80 })
+    .toBuffer();
+
+  // Composite original centered on blurred background
+  const result = await sharp(bgBuffer)
+    .composite([{ input: resized, left, top }])
     .jpeg({ quality: 90 })
     .toBuffer();
 
-  // Mask: white canvas with black rect over original image area
-  const blackRect = await sharp({
-    create: { width: origW, height: origH, channels: 3, background: { r: 0, g: 0, b: 0 } },
-  }).jpeg().toBuffer();
-
-  const maskBuffer = await sharp({
-    create: { width: targetW, height: targetH, channels: 3, background: { r: 255, g: 255, b: 255 } },
-  })
-    .composite([{ input: blackRect, left, top }])
-    .jpeg()
-    .toBuffer();
-
-  // Store in memory and serve from Railway — no fal.ai storage upload needed
-  const tempId = randomUUID();
-  tempImageStore.set(tempId, { padded: paddedBuffer, mask: maskBuffer });
-  setTimeout(() => tempImageStore.delete(tempId), 15 * 60 * 1000); // clean up after 15 min
-
-  const BASE_URL = process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : `http://localhost:${process.env.PORT || 3001}`;
-
-  return {
-    paddedUrl: `${BASE_URL}/temp/${tempId}/padded`,
-    maskUrl: `${BASE_URL}/temp/${tempId}/mask`,
-  };
+  return serveFromRailway(result, 'converted');
 };
 
 // ── Submit a single image-to-image job ──────────────────────────────────────
@@ -129,19 +98,6 @@ export const submitImageJob = async (imageUrl, prompt) => {
   return request_id;
 };
 
-// ── Submit a fast outpainting job (16:9 conversion) ──────────────────────────
-export const submitOutpaintingJob = async (paddedUrl, maskUrl, prompt) => {
-  const { request_id } = await fal.queue.submit(OUTPAINTING_MODEL, {
-    input: {
-      image_url: paddedUrl,
-      mask_url: maskUrl,
-      prompt,
-      num_images: 1,
-      enable_safety_checker: false,
-    },
-  });
-  return request_id;
-};
 
 // ── Submit 2 image jobs in parallel ─────────────────────────────────────────
 export const submitTwoParallelImageJobs = async (imageUrl, prompt) => {

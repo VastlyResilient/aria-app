@@ -69,8 +69,13 @@ export default function Step1PhotoUpload({ projectId, onNext }) {
       setPhotoConverting(room.id, true);
 
       try {
-        const { requestId } = await api.convertPhoto(projectId, room.id, uri);
-        pollConversion(requestId, room.id);
+        const res = await api.convertPhoto(projectId, room.id, uri);
+        if (res.url) {
+          setPhotoConverting(room.id, false);
+          setPhotoConverted(room.id, true, res.url);
+        } else {
+          pollConversion(res.requestId, room.id);
+        }
       } catch (err) {
         setPhotoConverting(room.id, false);
         Alert.alert('Upload Failed', 'Could not upload photo. Please try again.');
@@ -100,8 +105,13 @@ export default function Step1PhotoUpload({ projectId, onNext }) {
       setPhotoConverting('hero', true);
 
       try {
-        const { requestId } = await api.convertPhoto(projectId, 'hero', uri);
-        pollConversion(requestId, 'hero');
+        const res = await api.convertPhoto(projectId, 'hero', uri);
+        if (res.url) {
+          setPhotoConverting('hero', false);
+          setPhotoConverted('hero', true, res.url);
+        } else {
+          pollConversion(res.requestId, 'hero');
+        }
       } catch (err) {
         setPhotoConverting('hero', false);
         Alert.alert('Upload Failed', 'Could not upload photo. Please try again.');

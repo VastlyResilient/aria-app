@@ -1,12 +1,11 @@
 import { Router } from 'express';
+import { randomUUID } from 'crypto';
 import { query } from '../db/db.js';
-import { uploadImage, prepareOutpaintAssets, submitOutpaintingJob, getJobStatus, OUTPAINTING_MODEL } from '../services/falai.js';
-import { updateProject } from './projects.js';
-import { OUTPAINTING_16x9_PROMPT } from '../prompts.js';
+import { uploadImage, convertTo16x9 } from '../services/falai.js';
 
 const router = Router();
 
-// POST /convert — upload photo + fire 16:9 conversion
+// POST /convert — upload photo + convert to 16:9 synchronously (no AI, instant)
 router.post('/convert', async (req, res) => {
   try {
     const { projectId, roomId, imageDataUrl } = req.body;
@@ -14,81 +13,43 @@ router.post('/convert', async (req, res) => {
       return res.status(400).json({ error: 'projectId, roomId, and imageDataUrl are required' });
     }
 
-    // Upload sequentially to avoid overwhelming fal.ai storage API
-    const originalUrl = await uploadImage(imageDataUrl);
-    const { paddedUrl, maskUrl } = await prepareOutpaintAssets(imageDataUrl);
-
-    // Save original URL to project
     const projectResult = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
     const project = projectResult.rows[0];
-    if (!project) {
-      return res.status(404).json({ error: 'Not found' });
-    }
+    if (!project) return res.status(404).json({ error: 'Not found' });
 
+    // Both ops run in parallel — pure sharp processing, instant
+    const [originalUrl, converted16x9Url] = await Promise.all([
+      uploadImage(imageDataUrl),
+      convertTo16x9(imageDataUrl),
+    ]);
+
+    // Save to project
     const data = project.data;
     data.photos = data.photos || {};
-    data.photos[roomId] = { ...data.photos[roomId], original: originalUrl };
+    data.photos[roomId] = { ...data.photos[roomId], original: originalUrl, converted16x9: converted16x9Url };
     await query('UPDATE projects SET data = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(data), projectId]);
 
-    // Submit fal.ai outpainting job with padded image + mask
-    const requestId = await submitOutpaintingJob(paddedUrl, maskUrl, OUTPAINTING_16x9_PROMPT);
-
-    // Store job record
+    // Store completed job record
+    const fakeRequestId = `sharp-${randomUUID()}`;
     await query(
-      'INSERT INTO jobs (project_id, fal_request_id, job_type, room_id, status, fal_model_id) VALUES ($1, $2, $3, $4, $5, $6)',
-      [projectId, requestId, 'convert16x9', roomId, 'pending', OUTPAINTING_MODEL]
+      'INSERT INTO jobs (project_id, fal_request_id, job_type, room_id, status, fal_model_id, result) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [projectId, fakeRequestId, 'convert16x9', roomId, 'completed', 'sharp', JSON.stringify({ url: converted16x9Url })]
     );
 
-    res.json({ requestId, roomId });
+    res.json({ url: converted16x9Url, roomId });
   } catch (err) {
     console.error('Step1 convert error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /status/:requestId — check conversion status
+// GET /status/:requestId — kept for backwards compatibility, always returns completed
 router.get('/status/:requestId', async (req, res) => {
   try {
-    const { requestId } = req.params;
-
-    // Look up job to get project + room context
-    const jobResult = await query('SELECT * FROM jobs WHERE fal_request_id = $1', [requestId]);
+    const jobResult = await query('SELECT * FROM jobs WHERE fal_request_id = $1', [req.params.requestId]);
     const job = jobResult.rows[0];
     if (!job) return res.status(404).json({ error: 'Job not found' });
-
-    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [job.project_id]);
-    const project = projectResult.rows[0];
-    if (!project) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-
-    // If already completed in our DB, return cached result
-    if (job.status === 'completed' && job.result?.url) {
-      return res.json({ status: 'completed', result: job.result });
-    }
-
-    // Check fal.ai using the model that was used to submit the job
-    const falStatus = await getJobStatus(requestId, job.fal_model_id);
-
-    if (falStatus.status === 'completed' && falStatus.url) {
-      // Save result to project
-      const data = project.data;
-      data.photos[job.room_id] = { ...data.photos[job.room_id], converted16x9: falStatus.url };
-      await query('UPDATE projects SET data = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(data), job.project_id]);
-
-      // Update job record
-      await query('UPDATE jobs SET status = $1, result = $2, updated_at = NOW() WHERE id = $3',
-        ['completed', JSON.stringify({ url: falStatus.url }), job.id]);
-
-      return res.json({ status: 'completed', result: { url: falStatus.url } });
-    }
-
-    if (falStatus.status === 'failed') {
-      await query('UPDATE jobs SET status = $1, updated_at = NOW() WHERE id = $2', ['failed', job.id]);
-      return res.json({ status: 'failed' });
-    }
-
-    res.json({ status: 'pending' });
+    return res.json({ status: job.status, result: job.result });
   } catch (err) {
     console.error('Step1 status error:', err);
     res.status(500).json({ error: err.message });
