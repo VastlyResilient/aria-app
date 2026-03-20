@@ -88,9 +88,9 @@ export const submitImageJob = async (imageUrl, prompt) => {
     input: {
       image_url: imageUrl,
       prompt,
-      strength: 0.85,         // 0=keep original exactly, 1=ignore original fully
-      num_inference_steps: 28,
-      guidance_scale: 3.5,
+      strength: 0.45,         // 0=keep original exactly, 1=ignore original fully
+      num_inference_steps: 35,
+      guidance_scale: 8.0,
       num_images: 1,
       enable_safety_checker: false,
     },
