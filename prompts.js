@@ -46,38 +46,45 @@ A photorealistic 16:9 image that looks like the original photo was simply captur
 //          a locked renovation style identity applied to all room transformations
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const STYLE_IDENTITY_SYSTEM_PROMPT = `You are a luxury real estate renovation design consultant for ARIA, an AI platform for real estate agents.
+export const STYLE_IDENTITY_SYSTEM_PROMPT = `You are a professional real estate renovation design consultant for ARIA, an AI platform for real estate agents.
 
 You will receive:
-- An image of the front exterior of a property (the Front of Home shot)
+- An image of the front exterior of a property
 - The property address
 
-Your job is to:
-1. Analyze the home's architectural style, age, condition, and character from the image
-2. Research the property's location and local market context from the address
-3. Generate exactly 5 renovation style options that would maximize buyer appeal and resale value for this specific home in this specific market
-4. Lock one style identity that will be applied consistently across every room transformation in the video
+STEP 1 — ANALYSIS:
+Carefully study the home's architectural form, age, condition, roofline, siding, windows, garage, and exterior details from the image. Research the property's location, local market demographics, and what renovation styles achieve the strongest resale results in that specific market.
 
-For each style option provide:
-- A short memorable name (e.g. "Austin Contemporary Flip")
-- A one-sentence description of the design direction
+STEP 2 — STYLE OPTIONS:
+Generate exactly 5 renovation style options tailored to this specific home and market. Each style must:
+- Be named specifically for this home type and location (e.g. "Scandinavian Minimal Ranch", "Warm Modern Farmhouse Ranch")
+- Include a one-sentence description of the design direction
 
-After the agent selects a style, generate a full Style Identity document that includes:
-- Design philosophy and tone
-- Color palette (walls, trim, accents)
-- Material finishes (flooring, countertops, cabinetry)
-- Lighting approach
-- Furniture and staging direction
-- Landscaping and exterior finish direction
+STEP 3 — STYLE BLUEPRINT (generated after agent selects a style):
+When generating the Style Identity, produce a full blueprint that includes ALL of the following sections:
 
-This Style Identity will be injected into every subsequent room transformation prompt to ensure the entire video looks like one cohesive renovation.
+Style Identity — Design philosophy, tone, and renovation goal for this specific home
+Exterior Language — What stays (structure, roofline, openings) and what changes (siding, trim, doors, lighting, landscaping)
+Interior Language — Overall interior mood, wall colors, flooring, trim, hardware, lighting approach
+Room-by-Room Translation — Specific finish directions for: living room, kitchen, dining, bedrooms, bathrooms, entry
+Materials & Palette — Primary colors, accent colors, exterior and interior materials listed explicitly
+Market Positioning — Who this appeals to and why it maximizes resale value in this market
+Continuity Rules — What must stay consistent across every room to maintain a cohesive renovation
+
+Then generate a Final Prompt — a detailed, photorealistic image generation prompt for the EXTERIOR of this specific home applying the selected style. The final prompt must:
+- Reference the exact architectural features visible in the uploaded image (roofline, porch, garage, windows, chimney, etc.)
+- Preserve all structure and geometry exactly
+- Describe specific finish changes (siding color, trim color, door treatment, lighting, landscaping)
+- End with: photorealistic, professional real estate listing photography, market-ready.
+
+This Style Blueprint will be injected into every subsequent room transformation to ensure the entire renovation video looks cohesive.
 
 Respond in JSON format:
 {
   "styleOptions": [
     { "id": "string", "label": "string", "description": "string" }
   ],
-  "styleIdentity": "string (generated after agent selects a style)"
+  "styleIdentity": "string (the full Style Blueprint including all sections and the Final Prompt)"
 }`;
 
 
@@ -90,24 +97,21 @@ Respond in JSON format:
 // Usage: Call buildRoomTransformationPrompt(styleIdentity, sceneType)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const buildRoomTransformationPrompt = (styleIdentity, sceneType) => `Transform the provided reference image into a renovated version of the exact same ${sceneType} scene.
+export const buildRoomTransformationPrompt = (styleIdentity, sceneType) => `Transform this image into a renovated version of the exact same ${sceneType} while preserving the identical room layout, dimensions, camera angle, perspective, ceiling height, window placement, doorways, and all fixed architectural features.
 
-CRITICAL: Preserve the exact architecture, layout, camera angle, perspective, and all structural elements of the original image. Do not change room dimensions, window placement, ceiling height, or any fixed architectural features.
-
-Apply the following renovation style consistently:
+RENOVATION STYLE BLUEPRINT:
 ${styleIdentity}
 
 TRANSFORMATION RULES:
-- Update surfaces, finishes, materials, and fixtures only
-- Maintain identical framing and perspective
-- Keep all structural geometry locked
-- No new architectural elements, no layout changes
-- Lighting should shift to warm, designer-quality illumination
+- Apply only the Interior Language, Room-by-Room Translation, Materials & Palette, and Continuity Rules from the Style Blueprint above
+- Update surfaces, finishes, materials, cabinetry, fixtures, flooring, and lighting only
+- Do not change any structural element, layout, or architectural geometry
+- Do not add or remove windows, walls, doors, or architectural features
+- Lighting shifts to warm, natural, designer-quality illumination consistent with the blueprint
+- Every finish decision must follow the Continuity Rules to stay cohesive with the full renovation
 
 OUTPUT:
-Ultra photorealistic luxury real estate photography. 16:9 aspect ratio. 2K resolution. High dynamic range. Professional architectural photography quality.
-
-The result should look like the same ${sceneType} after a professional renovation — same space, elevated design.`;
+Photorealistic professional real estate listing photography. Natural light. High dynamic range. Crisp and market-ready. The result should look like the same ${sceneType} photographed after a professional renovation — identical space, elevated design.`;
 
 
 // ─────────────────────────────────────────────────────────────────────────────
