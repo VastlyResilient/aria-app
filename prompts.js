@@ -74,6 +74,7 @@ Continuity Rules — What must stay consistent across every room to maintain a c
 Then generate a Final Prompt — a detailed, photorealistic image generation prompt for the EXTERIOR of this specific home applying the selected style. The final prompt must:
 - Reference the exact architectural features visible in the uploaded image (roofline, porch, garage, windows, chimney, etc.)
 - Preserve all structure and geometry exactly
+- NEVER replace a door with a window or a window with a door — all openings stay exactly as they are
 - Describe specific finish changes (siding color, trim color, door treatment, lighting, landscaping)
 - End with: photorealistic, professional real estate listing photography, market-ready.
 
@@ -107,6 +108,7 @@ TRANSFORMATION RULES:
 - Update surfaces, finishes, materials, cabinetry, fixtures, flooring, and lighting only
 - Do not change any structural element, layout, or architectural geometry
 - Do not add or remove windows, walls, doors, or architectural features
+- NEVER replace a door with a window or a window with a door — all openings must remain exactly as they are
 - Lighting shifts to warm, natural, designer-quality illumination consistent with the blueprint
 - Every finish decision must follow the Continuity Rules to stay cohesive with the full renovation
 
